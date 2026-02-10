@@ -1,0 +1,5 @@
+{
+  "name": "Dermaly Chatbot",
+  "description": "Un assistant intelligent pour déterminer votre type de peau (normale, sèche, grasse ou sensible) à travers un diagnostic interactif et bienveillant.",
+  "requestFramePermissions": []
+}
