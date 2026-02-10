@@ -11,21 +11,23 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
   
   return (
     <div className={`flex w-full mb-4 ${isBot ? 'justify-start' : 'justify-end'} animate-fade-in`}>
-      <div className={`flex max-w-[85%] md:max-w-[70%] ${isBot ? 'flex-row' : 'flex-row-reverse'}`}>
-        <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${isBot ? 'bg-teal-100 text-teal-600' : 'bg-indigo-100 text-indigo-600'} mb-auto`}>
-          {isBot ? <i className="fas fa-robot"></i> : <i className="fas fa-user"></i>}
-        </div>
-        <div className={`mx-2 p-4 rounded-2xl shadow-sm text-sm md:text-base leading-relaxed ${
+      <div className={`flex max-w-[85%] ${isBot ? 'flex-row' : 'flex-row-reverse'} items-end gap-2`}>
+        {isBot && (
+          <div className="w-8 h-8 rounded-full bg-[#F8E1E7] flex items-center justify-center text-[#D48197] text-xs flex-shrink-0 mb-1">
+            <i className="fas fa-sparkles"></i>
+          </div>
+        )}
+        <div className={`px-5 py-3 rounded-[2rem] shadow-sm text-sm md:text-base leading-relaxed ${
           isBot 
-            ? 'bg-white text-gray-800 rounded-tl-none border border-gray-100' 
-            : 'bg-teal-600 text-white rounded-tr-none'
+            ? 'bg-white text-[#4A4A4A] rounded-bl-none border border-[#F8E1E7]' 
+            : 'bg-[#D48197] text-white rounded-br-none'
         }`}>
           {message.content.split('\n').map((line, i) => (
             <p key={i} className={i > 0 ? 'mt-2' : ''}>{line}</p>
           ))}
-          <span className={`block text-[10px] mt-1 opacity-60 ${isBot ? 'text-gray-400' : 'text-teal-100'}`}>
+          <div className={`text-[10px] mt-2 opacity-50 ${isBot ? 'text-[#D48197]' : 'text-white'}`}>
             {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
+          </div>
         </div>
       </div>
     </div>
