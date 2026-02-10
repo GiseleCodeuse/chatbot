@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Message, Role } from './types';
 import { ChatBubble } from './components/ChatBubble';
 import { LoadingDots } from './components/LoadingDots';
@@ -16,8 +16,19 @@ const App: React.FC = () => {
   useEffect(() => {
     const initChat = async () => {
       setIsTyping(true);
-      const welcomeMessage = await diagnosisService.startConversation();
-      addMessage('bot', welcomeMessage);
+      // On crée un message vide pour le bot qui sera rempli par le stream
+      const botMsgId = Math.random().toString(36).substring(7);
+      const initialBotMsg: Message = {
+        id: botMsgId,
+        role: 'bot',
+        content: '',
+        timestamp: new Date()
+      };
+      setMessages([initialBotMsg]);
+
+      await diagnosisService.startConversation((text) => {
+        setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, content: text } : m));
+      });
       setIsTyping(false);
     };
     initChat();
@@ -31,29 +42,40 @@ const App: React.FC = () => {
     }
   }, [messages, isTyping]);
 
-  const addMessage = (role: Role, content: string) => {
+  const addMessage = (role: Role, content: string): string => {
+    const id = Math.random().toString(36).substring(7);
     const newMessage: Message = {
-      id: Math.random().toString(36).substring(7),
+      id,
       role,
       content,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, newMessage]);
+    return id;
   };
 
   const handleSend = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isTyping) return;
 
     const userText = inputValue.trim();
     setInputValue('');
     addMessage('user', userText);
     
     setIsTyping(true);
+    
+    // Message vide pour le bot (placeholder pour le stream)
+    const botMsgId = addMessage('bot', '');
+    
     try {
-      const botResponse = await diagnosisService.sendMessage(userText);
-      addMessage('bot', botResponse);
+      let fullContent = "";
+      const stream = diagnosisService.sendMessageStream(userText);
+      
+      for await (const chunk of stream) {
+        fullContent += chunk;
+        setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, content: fullContent } : m));
+      }
     } catch (error) {
-      addMessage('bot', "Oups, j'ai rencontré un petit problème. Pourriez-vous répéter ?");
+      setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, content: "Oups, j'ai rencontré un petit problème. Pourriez-vous répéter ?" } : m));
     } finally {
       setIsTyping(false);
     }
@@ -96,9 +118,9 @@ const App: React.FC = () => {
         {messages.map((msg) => (
           <ChatBubble key={msg.id} message={msg} />
         ))}
-        {isTyping && <LoadingDots />}
+        {isTyping && messages[messages.length - 1]?.content === '' && <LoadingDots />}
         
-        {messages.length === 0 && !isTyping && (
+        {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <i className="fas fa-comments text-4xl mb-4 opacity-20"></i>
             <p>Initialisation du diagnostic...</p>

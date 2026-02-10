@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Chat } from "@google/genai";
+import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 
 const SYSTEM_INSTRUCTION = `
 Tu es un chatbot spécialisé dans le diagnostic cosmétique de type de peau. 
@@ -30,29 +30,34 @@ export class SkinDiagnosisService {
   constructor() {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     this.chat = ai.chats.create({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-flash-lite-latest', // Modèle le plus rapide et léger
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.7,
+        thinkingConfig: { thinkingBudget: 0 } // Désactive la réflexion pour une réponse instantanée
       },
     });
   }
 
-  async sendMessage(message: string): Promise<string> {
+  async *sendMessageStream(message: string) {
     try {
-      const response = await this.chat.sendMessage({ message });
-      return response.text || "Désolé, je n'ai pas pu analyser votre réponse. Pouvez-vous reformuler ?";
+      const responseStream = await this.chat.sendMessageStream({ message });
+      for await (const chunk of responseStream) {
+        const c = chunk as GenerateContentResponse;
+        yield c.text;
+      }
     } catch (error) {
       console.error("Gemini API Error:", error);
-      if (error instanceof Error && error.message.includes("Requested entity was not found")) {
-        // This might be an API key issue in some environments
-        return "Une erreur est survenue avec ma connexion. Veuillez réessayer plus tard.";
-      }
-      return "Une erreur technique s'est produite. Je vous prie de m'excuser.";
+      yield "Désolé, une erreur est survenue.";
     }
   }
 
-  async startConversation(): Promise<string> {
-    return this.sendMessage("Bonjour ! Je suis ton assistant Dermaly. Je vais t'aider à découvrir ton type de peau en quelques questions. Es-tu prêt(e) à commencer ?");
+  async startConversation(callback: (text: string) => void): Promise<void> {
+    const stream = this.sendMessageStream("Bonjour ! Je suis ton assistant Dermaly. Je vais t'aider à découvrir ton type de peau en quelques questions. Es-tu prêt(e) à commencer ?");
+    let fullText = "";
+    for await (const chunk of stream) {
+      fullText += chunk;
+      callback(fullText);
+    }
   }
 }
